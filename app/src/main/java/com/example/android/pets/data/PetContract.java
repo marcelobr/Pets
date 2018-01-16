@@ -15,8 +15,8 @@
  */
 package com.example.android.pets.data;
 
-import android.content.ContentResolver;
 import android.net.Uri;
+import android.content.ContentResolver;
 import android.provider.BaseColumns;
 
 /**

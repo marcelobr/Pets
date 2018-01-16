@@ -53,20 +53,15 @@ public class PetProvider extends ContentProvider {
         sUriMatcher.addURI(PetContract.CONTENT_AUTHORITY, PetContract.PATH_PETS + "/#", PET_ID);
     }
 
-    private PetDBHelper mDbHelper;
+    /** Database helper object */
+    private PetDbHelper mDbHelper;
 
-    /**
-     * Initialize the provider and the database helper object.
-     */
     @Override
     public boolean onCreate() {
-        mDbHelper = new PetDBHelper(getContext());
+        mDbHelper = new PetDbHelper(getContext());
         return true;
     }
 
-    /**
-     * Perform the query for the given URI. Use the given projection, selection, selection arguments, and sort order.
-     */
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
                         String sortOrder) {
@@ -112,12 +107,10 @@ public class PetProvider extends ContentProvider {
         // If the data at this URI changes, then we know we need to update the Cursor.
         cursor.setNotificationUri(getContext().getContentResolver(), uri);
 
+        // Return the cursor
         return cursor;
     }
 
-    /**
-     * Insert new data into the provider with the given ContentValues.
-     */
     @Override
     public Uri insert(Uri uri, ContentValues contentValues) {
         final int match = sUriMatcher.match(uri);
@@ -134,16 +127,32 @@ public class PetProvider extends ContentProvider {
      * for that specific row in the database.
      */
     private Uri insertPet(Uri uri, ContentValues values) {
-
+        // Check that the name is not null
         String name = values.getAsString(PetEntry.COLUMN_PET_NAME);
         if (name == null) {
             throw new IllegalArgumentException("Pet requires a name");
         }
 
+        // Check that the gender is valid
+        Integer gender = values.getAsInteger(PetEntry.COLUMN_PET_GENDER);
+        if (gender == null || !PetEntry.isValidGender(gender)) {
+            throw new IllegalArgumentException("Pet requires valid gender");
+        }
+
+        // If the weight is provided, check that it's greater than or equal to 0 kg
+        Integer weight = values.getAsInteger(PetEntry.COLUMN_PET_WEIGHT);
+        if (weight != null && weight < 0) {
+            throw new IllegalArgumentException("Pet requires valid weight");
+        }
+
+        // No need to check the breed, any value is valid (including null).
+
+        // Get writeable database
         SQLiteDatabase database = mDbHelper.getWritableDatabase();
 
+        // Insert the new pet with the given values
         long id = database.insert(PetEntry.TABLE_NAME, null, values);
-
+        // If the ID is -1, then the insertion failed. Log an error and return null.
         if (id == -1) {
             Log.e(LOG_TAG, "Failed to insert row for " + uri);
             return null;
@@ -156,11 +165,9 @@ public class PetProvider extends ContentProvider {
         return ContentUris.withAppendedId(uri, id);
     }
 
-    /**
-     * Updates the data at the given selection and selection arguments, with the new ContentValues.
-     */
     @Override
-    public int update(Uri uri, ContentValues contentValues, String selection, String[] selectionArgs) {
+    public int update(Uri uri, ContentValues contentValues, String selection,
+                      String[] selectionArgs) {
         final int match = sUriMatcher.match(uri);
         switch (match) {
             case PETS:
@@ -230,13 +237,10 @@ public class PetProvider extends ContentProvider {
             getContext().getContentResolver().notifyChange(uri, null);
         }
 
-        // Returns the number of database rows affected by the update statement
-        return database.update(PetEntry.TABLE_NAME, values, selection, selectionArgs);
+        // Return the number of rows updated
+        return rowsUpdated;
     }
 
-    /**
-     * Delete the data at the given selection and selection arguments.
-     */
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
         // Get writeable database
@@ -267,12 +271,10 @@ public class PetProvider extends ContentProvider {
             getContext().getContentResolver().notifyChange(uri, null);
         }
 
+        // Return the number of rows deleted
         return rowsDeleted;
     }
 
-    /**
-     * Returns the MIME type of data for the content URI.
-     */
     @Override
     public String getType(Uri uri) {
         final int match = sUriMatcher.match(uri);
